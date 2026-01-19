@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
   })
@@ -15,12 +15,10 @@ export async function proxy(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
+          cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           )
-          supabaseResponse = NextResponse.next({
-            request,
-          })
+          supabaseResponse = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           )
@@ -36,7 +34,9 @@ export async function proxy(request: NextRequest) {
 
   // Protected routes
   const protectedPaths = ['/dashboard', '/admin', '/moderator', '/author', '/contributor']
-  const isProtectedPath = protectedPaths.some(path => request.nextUrl.pathname.startsWith(path))
+  const isProtectedPath = protectedPaths.some(path =>
+    request.nextUrl.pathname.startsWith(path)
+  )
 
   if (isProtectedPath && !user) {
     const redirectUrl = request.nextUrl.clone()
@@ -53,21 +53,17 @@ export async function proxy(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
-    // Admin-only routes
     if (request.nextUrl.pathname.startsWith('/admin') && profile?.role !== 'admin') {
       return NextResponse.redirect(new URL('/', request.url))
     }
 
-    // Moderator routes (moderators and admins)
     if (
       request.nextUrl.pathname.startsWith('/moderator') &&
-      profile?.role !== 'moderator' &&
-      profile?.role !== 'admin'
+      !['admin', 'moderator'].includes(profile?.role || '')
     ) {
       return NextResponse.redirect(new URL('/', request.url))
     }
 
-    // Author routes (author, contributor, moderator, admin)
     if (
       request.nextUrl.pathname.startsWith('/author') &&
       !['admin', 'moderator', 'author', 'contributor'].includes(profile?.role || '')
