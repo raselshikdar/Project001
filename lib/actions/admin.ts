@@ -111,20 +111,30 @@ export async function suspendUser(userId: string, duration: number) {
 export async function approvePost(postId: string, adminId: string) {
   const supabase = await createClient()
 
-  const { error } = await supabase
-    .from('posts')
-    .update({ 
-      status: 'approved',
-      approved_by: adminId,
-      approved_at: new Date().toISOString(),
-      published_at: new Date().toISOString()
-    })
-    .eq('id', postId)
+  try {
+    const { error } = await supabase
+      .from('posts')
+      .update({ 
+        status: 'approved',
+        approved_by: adminId,
+        approved_at: new Date().toISOString(),
+        published_at: new Date().toISOString()
+      })
+      .eq('id', postId)
 
-  if (error) throw error
+    if (error) {
+      console.error('[v0] Error approving post:', error)
+      throw new Error(error.message)
+    }
 
-  revalidatePath('/admin')
-  return { success: true }
+    revalidatePath('/admin')
+    revalidatePath('/admin/posts')
+    revalidatePath('/')
+    return { success: true }
+  } catch (error) {
+    console.error('[v0] Approve post error:', error)
+    throw error
+  }
 }
 
 export async function rejectPost(postId: string, reason: string) {

@@ -42,9 +42,12 @@ export function PostReviewClient({ posts }: { posts: Post[] }) {
   const handleApprove = async (postId: string) => {
     setIsLoading(true)
     try {
-      // Get current user ID (admin)
-      const adminId = 'temp-admin-id' // This will be replaced with actual user ID
-      await approvePost(postId, adminId)
+      const user = await getUser()
+      if (!user?.id) {
+        alert('ব্যবহারকারী সনাক্ত করতে পারছি না')
+        return
+      }
+      await approvePost(postId, user.id)
       router.refresh()
     } catch (error) {
       console.error('[v0] Error approving post:', error)

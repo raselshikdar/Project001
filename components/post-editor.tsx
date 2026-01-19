@@ -143,7 +143,17 @@ export function PostEditor({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="category">ক্যাটাগরি</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="category">ক্যাটাগরি</Label>
+              <a
+                href="/author/categories/request"
+                className="text-xs text-primary hover:underline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                নতুন ক্যাটাগরি অনুরোধ করুন
+              </a>
+            </div>
             <Select value={categoryId} onValueChange={setCategoryId} disabled={isLoading}>
               <SelectTrigger>
                 <SelectValue placeholder="ক্যাটাগরি নির্বাচন করুন" />
@@ -213,9 +223,16 @@ export function PostEditor({
               required
               disabled={isLoading}
             />
-            <p className="text-sm text-muted-foreground">
-              HTML এবং Markdown সাপোর্ট করে। কোড ব্লক, লিংক, ইমেজ ইত্যাদি যোগ করতে পারবেন।
-            </p>
+            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+              <p className="w-full">
+                HTML, Markdown এবং BB Code সাপোর্ট করে। উদাহরণ:
+              </p>
+              <code className="bg-muted px-2 py-1 rounded">[b]বোল্ড[/b]</code>
+              <code className="bg-muted px-2 py-1 rounded">[i]ইটালিক[/i]</code>
+              <code className="bg-muted px-2 py-1 rounded">[img]url[/img]</code>
+              <code className="bg-muted px-2 py-1 rounded">[url=link]টেক্সট[/url]</code>
+              <code className="bg-muted px-2 py-1 rounded">[code]কোড[/code]</code>
+            </div>
           </div>
 
           <div className="flex gap-4">
