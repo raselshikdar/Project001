@@ -59,7 +59,7 @@ export default async function HomePage() {
     .from('forum_threads')
     .select(`
       *,
-      profiles:author_id (full_name, avatar_url),
+      profiles:user_id (full_name, avatar_url),
       forum_replies (count)
     `)
     .order('created_at', { ascending: false })

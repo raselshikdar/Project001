@@ -80,7 +80,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
       }
     }
   } catch (error) {
-    console.error('[v0] Middleware error:', error)
+    console.error('[v0] Proxy error:', error)
   }
 
   return response
