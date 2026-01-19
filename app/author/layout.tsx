@@ -14,9 +14,9 @@ export default async function AuthorLayout({
 
   if (
     !user ||
-    !['author', 'admin', 'moderator'].includes(user.profile?.role || '')
+    !['author', 'admin', 'moderator', 'contributor'].includes(user.profile?.role || '')
   ) {
-    redirect('/dashboard')
+    redirect('/')
   }
 
   const navigation = [
@@ -50,7 +50,7 @@ export default async function AuthorLayout({
         </nav>
         <div className="mt-8">
           <Button asChild variant="outline" className="w-full bg-transparent">
-            <Link href="/dashboard">ড্যাশবোর্ডে ফিরে যান</Link>
+            <Link href="/">হোমে ফিরে যান</Link>
           </Button>
         </div>
       </aside>

@@ -11,7 +11,7 @@ import { TrendingUp, MessageSquare, Users, Sparkles, ArrowRight } from 'lucide-r
 export default async function HomePage() {
   const supabase = await createServerClient()
 
-  // Fetch featured posts (2 posts)
+  // Fetch featured posts (is_featured = true)
   const { data: featuredPosts } = await supabase
     .from('posts')
     .select(`
@@ -20,10 +20,11 @@ export default async function HomePage() {
       categories (name, slug)
     `)
     .eq('status', 'approved')
+    .eq('is_featured', true)
     .order('published_at', { ascending: false })
     .limit(2)
 
-  // Fetch hot/popular posts (4 posts)
+  // Fetch hot/popular posts (view_count > 0)
   const { data: hotPosts } = await supabase
     .from('posts')
     .select(`
@@ -32,10 +33,11 @@ export default async function HomePage() {
       categories (name, slug)
     `)
     .eq('status', 'approved')
+    .gt('view_count', 0)
     .order('view_count', { ascending: false })
     .limit(4)
 
-  // Fetch recent posts (15 posts)
+  // Fetch recent posts (all approved, ordered by date)
   const { data: recentPosts } = await supabase
     .from('posts')
     .select(`
@@ -45,7 +47,7 @@ export default async function HomePage() {
     `)
     .eq('status', 'approved')
     .order('published_at', { ascending: false })
-    .range(2, 16)
+    .range(0, 14)
 
   // Fetch categories
   const { data: categories } = await supabase

@@ -21,7 +21,7 @@ export default async function AdminLayout({
   const user = await getUser()
 
   if (!user || user.profile?.role !== 'admin') {
-    redirect('/dashboard')
+    redirect('/')
   }
 
   const navigation = [
@@ -59,7 +59,7 @@ export default async function AdminLayout({
         </nav>
         <div className="mt-8">
           <Button asChild variant="outline" className="w-full bg-transparent">
-            <Link href="/dashboard">ড্যাশবোর্ডে ফিরে যান</Link>
+            <Link href="/">হোমে ফিরে যান</Link>
           </Button>
         </div>
       </aside>
