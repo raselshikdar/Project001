@@ -1,5 +1,7 @@
 'use client'
 
+import React from "react"
+
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -15,6 +17,8 @@ import {
 } from '@/components/ui/select'
 import { Card, CardContent } from '@/components/ui/card'
 import { createPost } from '@/lib/actions/author'
+import { uploadPostImage } from '@/lib/utils/upload'
+import { ImagePlus, Loader2 } from 'lucide-react'
 
 type Category = {
   id: string
@@ -32,11 +36,57 @@ export function PostEditor({
 }) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
   const [title, setTitle] = useState('')
   const [excerpt, setExcerpt] = useState('')
   const [content, setContent] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const [featuredImage, setFeaturedImage] = useState('')
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [uploadError, setUploadError] = useState('')
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setUploadError('শুধুমাত্র ইমেজ ফাইল আপলোড করতে পারবেন')
+      return
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError('ইমেজের সাইজ ৫MB এর বেশি হতে পারবে না')
+      return
+    }
+
+    setIsUploadingImage(true)
+    setUploadError('')
+
+    try {
+      const { url, error } = await uploadPostImage(file, 'thumbnail')
+      
+      if (error || !url) {
+        setUploadError(error || 'ইমেজ আপলোড ব্যর্থ হয়েছে')
+        return
+      }
+
+      setFeaturedImage(url)
+      
+      // Create local preview
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        setImagePreview(event.target?.result as string)
+      }
+      reader.readAsDataURL(file)
+    } catch (error) {
+      console.error('[v0] Image upload error:', error)
+      setUploadError('ইমেজ আপলোড করতে সমস্যা হয়েছে')
+    } finally {
+      setIsUploadingImage(false)
+    }
+  }
 
   const handleSubmit = async (status: 'draft' | 'pending') => {
     if (!title || !content) {
@@ -76,6 +126,7 @@ export function PostEditor({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
+              disabled={isLoading}
             />
           </div>
 
@@ -87,12 +138,13 @@ export function PostEditor({
               value={excerpt}
               onChange={(e) => setExcerpt(e.target.value)}
               rows={2}
+              disabled={isLoading}
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="category">ক্যাটাগরি</Label>
-            <Select value={categoryId} onValueChange={setCategoryId}>
+            <Select value={categoryId} onValueChange={setCategoryId} disabled={isLoading}>
               <SelectTrigger>
                 <SelectValue placeholder="ক্যাটাগরি নির্বাচন করুন" />
               </SelectTrigger>
@@ -106,14 +158,47 @@ export function PostEditor({
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="featured_image">ফিচার্ড ইমেজ URL</Label>
-            <Input
-              id="featured_image"
-              placeholder="https://..."
-              value={featuredImage}
-              onChange={(e) => setFeaturedImage(e.target.value)}
-            />
+          <div className="space-y-3">
+            <Label>ফিচার্ড ইমেজ</Label>
+            <div className="flex gap-4">
+              <div className="flex-1">
+                <div className="relative overflow-hidden rounded-lg border-2 border-dashed border-border p-4">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    disabled={isUploadingImage || isLoading}
+                    className="absolute inset-0 cursor-pointer opacity-0"
+                  />
+                  <div className="flex flex-col items-center justify-center py-8">
+                    {isUploadingImage ? (
+                      <>
+                        <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+                        <p className="text-sm text-muted-foreground">আপলোড হচ্ছে...</p>
+                      </>
+                    ) : (
+                      <>
+                        <ImagePlus className="h-8 w-8 text-muted-foreground mb-2" />
+                        <p className="text-sm font-medium">ছবি আপলোড করুন</p>
+                        <p className="text-xs text-muted-foreground">বা ক্লিক করে নির্বাচন করুন (৫MB পর্যন্ত)</p>
+                      </>
+                    )}
+                  </div>
+                </div>
+                {uploadError && (
+                  <p className="text-sm text-destructive mt-2">{uploadError}</p>
+                )}
+              </div>
+              {imagePreview && (
+                <div className="w-32">
+                  <img
+                    src={imagePreview || "/placeholder.svg"}
+                    alt="Preview"
+                    className="h-32 w-32 rounded-lg object-cover"
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -126,6 +211,7 @@ export function PostEditor({
               rows={20}
               className="font-mono"
               required
+              disabled={isLoading}
             />
             <p className="text-sm text-muted-foreground">
               HTML এবং Markdown সাপোর্ট করে। কোড ব্লক, লিংক, ইমেজ ইত্যাদি যোগ করতে পারবেন।
@@ -136,20 +222,27 @@ export function PostEditor({
             <Button
               onClick={() => handleSubmit('draft')}
               variant="outline"
-              disabled={isLoading}
+              disabled={isLoading || isUploadingImage}
             >
               খসড়া হিসেবে সংরক্ষণ করুন
             </Button>
             <Button
               onClick={() => handleSubmit('pending')}
-              disabled={isLoading}
+              disabled={isLoading || isUploadingImage}
             >
-              পর্যালোচনার জন্য জমা দিন
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  জমা দিচ্ছি...
+                </>
+              ) : (
+                'পর্যালোচনার জন্য জমা দিন'
+              )}
             </Button>
             <Button
               variant="ghost"
               onClick={() => router.back()}
-              disabled={isLoading}
+              disabled={isLoading || isUploadingImage}
             >
               বাতিল
             </Button>

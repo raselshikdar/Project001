@@ -3,6 +3,65 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
+export async function getDashboardStats() {
+  const supabase = await createClient()
+
+  try {
+    const [
+      { count: totalUsers },
+      { count: totalPosts },
+      { count: pendingPosts },
+      { count: totalThreads },
+      { count: totalComments },
+    ] = await Promise.all([
+      supabase.from('profiles').select('*', { count: 'exact', head: true }),
+      supabase.from('posts').select('*', { count: 'exact', head: true }),
+      supabase.from('posts').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+      supabase.from('forum_threads').select('*', { count: 'exact', head: true }),
+      supabase.from('comments').select('*', { count: 'exact', head: true }),
+    ])
+
+    return {
+      totalUsers: totalUsers || 0,
+      totalPosts: totalPosts || 0,
+      pendingPosts: pendingPosts || 0,
+      totalThreads: totalThreads || 0,
+      totalComments: totalComments || 0,
+    }
+  } catch (error) {
+    console.error('[v0] Error fetching dashboard stats:', error)
+    return {
+      totalUsers: 0,
+      totalPosts: 0,
+      pendingPosts: 0,
+      totalThreads: 0,
+      totalComments: 0,
+    }
+  }
+}
+
+export async function getPendingPosts() {
+  const supabase = await createClient()
+
+  try {
+    const { data, error } = await supabase
+      .from('posts')
+      .select(`
+        *,
+        author:profiles!posts_author_id_fkey(username, full_name),
+        category:categories(name_bn)
+      `)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error('[v0] Error fetching pending posts:', error)
+    return []
+  }
+}
+
 export async function getAllUsers() {
   const supabase = await createClient()
   
@@ -49,6 +108,42 @@ export async function suspendUser(userId: string, duration: number) {
   return { success: true }
 }
 
+export async function approvePost(postId: string, adminId: string) {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('posts')
+    .update({ 
+      status: 'approved',
+      approved_by: adminId,
+      approved_at: new Date().toISOString(),
+      published_at: new Date().toISOString()
+    })
+    .eq('id', postId)
+
+  if (error) throw error
+
+  revalidatePath('/admin')
+  return { success: true }
+}
+
+export async function rejectPost(postId: string, reason: string) {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('posts')
+    .update({ 
+      status: 'rejected',
+      rejection_reason: reason
+    })
+    .eq('id', postId)
+
+  if (error) throw error
+
+  revalidatePath('/admin')
+  return { success: true }
+}
+
 export async function unsuspendUser(userId: string) {
   const supabase = await createClient()
   
@@ -64,85 +159,6 @@ export async function unsuspendUser(userId: string) {
   
   revalidatePath('/admin')
   return { success: true }
-}
-
-export async function getPendingPosts() {
-  const supabase = await createClient()
-  
-  const { data, error } = await supabase
-    .from('posts')
-    .select(`
-      *,
-      author:profiles!posts_author_id_fkey(username, full_name),
-      category:categories(name_bn)
-    `)
-    .eq('status', 'pending')
-    .order('created_at', { ascending: false })
-
-  if (error) throw error
-  return data
-}
-
-export async function approvePost(postId: string, adminId: string) {
-  const supabase = await createClient()
-  
-  const { error } = await supabase
-    .from('posts')
-    .update({ 
-      status: 'approved',
-      approved_by: adminId,
-      approved_at: new Date().toISOString(),
-      published_at: new Date().toISOString()
-    })
-    .eq('id', postId)
-
-  if (error) throw error
-  
-  revalidatePath('/admin')
-  return { success: true }
-}
-
-export async function rejectPost(postId: string, reason: string) {
-  const supabase = await createClient()
-  
-  const { error } = await supabase
-    .from('posts')
-    .update({ 
-      status: 'rejected',
-      rejection_reason: reason
-    })
-    .eq('id', postId)
-
-  if (error) throw error
-  
-  revalidatePath('/admin')
-  return { success: true }
-}
-
-export async function getDashboardStats() {
-  const supabase = await createClient()
-  
-  const [
-    { count: totalUsers },
-    { count: totalPosts },
-    { count: pendingPosts },
-    { count: totalThreads },
-    { count: totalComments },
-  ] = await Promise.all([
-    supabase.from('profiles').select('*', { count: 'exact', head: true }),
-    supabase.from('posts').select('*', { count: 'exact', head: true }).eq('status', 'approved'),
-    supabase.from('posts').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
-    supabase.from('forum_threads').select('*', { count: 'exact', head: true }),
-    supabase.from('comments').select('*', { count: 'exact', head: true }),
-  ])
-
-  return {
-    totalUsers: totalUsers || 0,
-    totalPosts: totalPosts || 0,
-    pendingPosts: pendingPosts || 0,
-    totalThreads: totalThreads || 0,
-    totalComments: totalComments || 0,
-  }
 }
 
 export async function createCategory(data: { 
