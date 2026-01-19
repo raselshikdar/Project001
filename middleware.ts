@@ -27,7 +27,7 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Refresh session if expired
+  // Get current user (refreshes session if needed)
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -38,6 +38,7 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith(path)
   )
 
+  // If not logged in, redirect to login
   if (isProtectedPath && !user) {
     const redirectUrl = request.nextUrl.clone()
     redirectUrl.pathname = '/auth/login'
@@ -51,22 +52,27 @@ export async function middleware(request: NextRequest) {
       .from('profiles')
       .select('role')
       .eq('id', user.id)
-      .single()
+      .maybeSingle()
 
-    if (request.nextUrl.pathname.startsWith('/admin') && profile?.role !== 'admin') {
+    const role = profile?.role ?? 'user'
+
+    // Admin-only routes
+    if (request.nextUrl.pathname.startsWith('/admin') && role !== 'admin') {
       return NextResponse.redirect(new URL('/', request.url))
     }
 
+    // Moderator routes (admin + moderator)
     if (
       request.nextUrl.pathname.startsWith('/moderator') &&
-      !['admin', 'moderator'].includes(profile?.role || '')
+      !['admin', 'moderator'].includes(role)
     ) {
       return NextResponse.redirect(new URL('/', request.url))
     }
 
+    // Author routes (admin, moderator, author, contributor)
     if (
       request.nextUrl.pathname.startsWith('/author') &&
-      !['admin', 'moderator', 'author', 'contributor'].includes(profile?.role || '')
+      !['admin', 'moderator', 'author', 'contributor'].includes(role)
     ) {
       return NextResponse.redirect(new URL('/', request.url))
     }
