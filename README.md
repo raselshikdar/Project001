@@ -1,4 +1,4 @@
-## বাংলা টেক - Bengali Content Platform
+# বাংলা টেক - Bengali Content Platform
 
 A production-ready, full-stack Bengali content platform similar to TrickBD.com with modern architecture and comprehensive features.
 
